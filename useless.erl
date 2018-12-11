@@ -1,5 +1,5 @@
 -module(useless).
--export([add/2, hello/0, greet/2, lol/1, zip/2]).
+-export([add/2, hello/0, greet/2, lol/1, zip/2, rpn/1]).
 
 add(A, B) ->
     A + B + 1.
@@ -22,3 +22,17 @@ zip(X, Y) -> lists:reverse(zip(X, Y, [])).
 zip([], _, Ans) -> Ans;
 zip(_, [], Ans) -> Ans;
 zip([X|Xs], [Y|Ys], Ans) -> zip(Xs, Ys, [{X, Y} | Ans]).
+
+tokenize(S) -> case string:to_integer(S) of
+                   {error, _} -> {op, S};
+                   {Int, _} -> {num, Int}
+               end.
+
+rpn(X) -> rpn(lists:map(fun tokenize/1, string:tokens(X, " ")), []).
+
+rpn([], Stack) -> hd(Stack);
+rpn([{num, T}|Tokens], Stack) -> rpn(Tokens, [T|Stack]);
+rpn([{op, "+"}|Tokens], [N1, N2|S]) -> rpn(Tokens, [N2 + N1|S]);
+rpn([{op, "-"}|Tokens], [N1, N2|S]) -> rpn(Tokens, [N2 - N1|S]);
+rpn([{op, "*"}|Tokens], [N1, N2|S]) -> rpn(Tokens, [N2 * N1|S]);
+rpn([{op, "/"}|Tokens], [N1, N2|S]) -> rpn(Tokens, [N2 / N1|S]).
