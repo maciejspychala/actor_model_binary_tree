@@ -1,4 +1,4 @@
--module(tree).
+-module(tree_simple).
 -export([nd/1, insert/2, loop/0]).
 
 -record(node, {val=nil,
