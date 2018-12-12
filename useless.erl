@@ -1,5 +1,5 @@
 -module(useless).
--export([add/2, hello/0, greet/2, lol/1, zip/2, rpn/1]).
+-export([add/2, hello/0, greet/2, lol/1, zip/2, rpn/1, rocket/0]).
 
 add(A, B) ->
     A + B + 1.
@@ -36,3 +36,13 @@ rpn([{op, "+"}|Tokens], [N1, N2|S]) -> rpn(Tokens, [N2 + N1|S]);
 rpn([{op, "-"}|Tokens], [N1, N2|S]) -> rpn(Tokens, [N2 - N1|S]);
 rpn([{op, "*"}|Tokens], [N1, N2|S]) -> rpn(Tokens, [N2 * N1|S]);
 rpn([{op, "/"}|Tokens], [N1, N2|S]) -> rpn(Tokens, [N2 / N1|S]).
+
+rocket() ->
+    receive
+        {From, liftoff} ->
+            From!brwrbrwbrbwrbrwr;
+        {From, second_stage} ->
+            From!kyszu;
+        {From, _} ->
+            From!ground_control
+    end.
