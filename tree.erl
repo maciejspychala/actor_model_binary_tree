@@ -1,5 +1,5 @@
 -module(tree).
--export([loop/0]).
+-export([loop/0, client/2]).
 
 -record(node, {val=nil,
                left=nil,
@@ -48,14 +48,19 @@ lookup(M, N) ->
         _ -> Branch!M
     end.
 
-client(Id) ->
+client(Id, Q) ->
     receive
-        M -> io:format("~p\n", [M]),
-             client(Id + 1)
+        M -> case M#msg.id of
+                 Id ->
+                     io:format("~p\n", [M]),
+                     client(Id + 1, Q);
+                 _ ->
+                     client(Id, [M|Q])
+             end
     end.
 
 loop() ->
-    C = spawn(fun() -> client(0) end),
+    C = spawn(fun() -> client(0, []) end),
     N = spawn(fun() -> nd() end),
     loop(N, C, 0).
 
