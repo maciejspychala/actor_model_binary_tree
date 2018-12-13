@@ -18,7 +18,7 @@ nd(Node) ->
 
 insert(M, N = #node{val=nil}) ->
     New = N#node{val=M#msg.val},
-    M#msg.client!#msg{type=inserted, val=New#node.val},
+    M#msg.client!M#msg{type=inserted},
     New;
 insert(M, N) when M#msg.val < N#node.val ->
     N#node{left=send_insert(M, N#node.left)};
