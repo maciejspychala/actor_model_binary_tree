@@ -3,7 +3,8 @@
 
 -record(node, {val=nil,
                left=nil,
-               right=nil}).
+               right=nil,
+               removed=false}).
 -record(msg, {type,
               val,
               client,
@@ -17,7 +18,10 @@ nd(Node) ->
             nd(New);
         M = #msg{type=lookup} ->
             lookup(M, Node),
-            nd(Node)
+            nd(Node);
+        M = #msg{type=remove} ->
+            New = remove(M, Node),
+            nd(New)
     end.
 
 insert(M, N = #node{val=nil}) ->
@@ -37,7 +41,7 @@ send_insert(M, N) ->
     N!M,
     N.
 
-lookup(M, N) when M#msg.val == N#node.val ->
+lookup(M, N = #node{removed=false}) when M#msg.val == N#node.val ->
     M#msg.client!M#msg{type=found};
 lookup(M, N) ->
     Branch = if M#msg.val < N#node.val -> N#node.left;
@@ -47,6 +51,19 @@ lookup(M, N) ->
         nil -> M#msg.client!M#msg{type=not_found};
         _ -> Branch!M
     end.
+
+remove(M, N = #node{removed=false}) when M#msg.val == N#node.val ->
+    M#msg.client!M#msg{type=removed},
+    N#node{removed=true};
+remove(M, N) ->
+    Branch = if M#msg.val < N#node.val -> N#node.left;
+                M#msg.val >= N#node.val -> N#node.right
+             end,
+    case Branch of
+        nil -> M#msg.client!M#msg{type=not_removed};
+        _ -> Branch!M
+    end,
+    N.
 
 process_messages(Id, []) -> {Id, []};
 process_messages(Id, Q) ->
@@ -78,12 +95,15 @@ loop() ->
 
 loop(Node, Client, Id) ->
     {ok, [T]} = io:fread("type: ","~c"),
-    {ok, [V]} = io:fread("new value: ","~d"),
+    {ok, [V]} = io:fread("value: ","~d"),
     case T of
         "i" ->
             Node!#msg{type=insert, val=V, client=Client, id=Id},
             loop(Node, Client, Id + 1);
         "l" ->
             Node!#msg{type=lookup, val=V, client=Client, id=Id},
+            loop(Node, Client, Id + 1);
+        "d" ->
+            Node!#msg{type=remove, val=V, client=Client, id=Id},
             loop(Node, Client, Id + 1)
     end.
