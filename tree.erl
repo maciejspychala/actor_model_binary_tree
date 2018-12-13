@@ -13,7 +13,6 @@ nd(Node) ->
     receive
         M = #msg{type=insert} ->
             New = insert(M, Node),
-            io:format("~p\n", [New]),
             nd(New)
     end.
 
