@@ -1,5 +1,5 @@
 -module(tree).
--export([loop/0, client/2]).
+-export([loop/0, logger/2]).
 
 -record(node, {val=nil,
                left=nil,
@@ -7,7 +7,7 @@
                removed=false}).
 -record(msg, {type,
               val,
-              client,
+              logger,
               id}).
 
 nd() -> nd(#node{}).
@@ -24,9 +24,11 @@ nd(Node) ->
             nd(New)
     end.
 
+log(M, Type) -> M#msg.logger!M#msg{type=Type}.
+
 insert(M, N = #node{val=nil}) ->
     New = N#node{val=M#msg.val},
-    M#msg.client!M#msg{type=inserted},
+    log(M, inserted),
     New;
 insert(M, N) when M#msg.val < N#node.val ->
     N#node{left=send_insert(M, N#node.left)};
@@ -42,25 +44,25 @@ send_insert(M, N) ->
     N.
 
 lookup(M, N = #node{removed=false}) when M#msg.val == N#node.val ->
-    M#msg.client!M#msg{type=found};
+    log(M, found);
 lookup(M, N) ->
     Branch = if M#msg.val < N#node.val -> N#node.left;
                 M#msg.val >= N#node.val -> N#node.right
              end,
     case Branch of
-        nil -> M#msg.client!M#msg{type=not_found};
+        nil -> log(M, not_found);
         _ -> Branch!M
     end.
 
 remove(M, N = #node{removed=false}) when M#msg.val == N#node.val ->
-    M#msg.client!M#msg{type=removed},
+    log(M, removed),
     N#node{removed=true};
 remove(M, N) ->
     Branch = if M#msg.val < N#node.val -> N#node.left;
                 M#msg.val >= N#node.val -> N#node.right
              end,
     case Branch of
-        nil -> M#msg.client!M#msg{type=not_removed};
+        nil -> log(M, not_removed);
         _ -> Branch!M
     end,
     N.
@@ -76,34 +78,34 @@ process_messages(Id, Q) ->
             {Id, [M|Ms]}
     end.
 
-client(TId, TQ) ->
+logger(TId, TQ) ->
     {Id, Q} = process_messages(TId, TQ),
     receive
         M -> case M#msg.id of
                  Id ->
                      io:format("~p\n", [M]),
-                     client(Id + 1, Q);
+                     logger(Id + 1, Q);
                  _ ->
-                     client(Id, [M|Q])
+                     logger(Id, [M|Q])
              end
     end.
 
 loop() ->
-    C = spawn(fun() -> client(0, []) end),
+    C = spawn(fun() -> logger(0, []) end),
     N = spawn(fun() -> nd() end),
     loop(N, C, 0).
 
-loop(Node, Client, Id) ->
+loop(Node, Logger, Id) ->
     {ok, [T]} = io:fread("type: ","~c"),
     {ok, [V]} = io:fread("value: ","~d"),
     case T of
         "i" ->
-            Node!#msg{type=insert, val=V, client=Client, id=Id},
-            loop(Node, Client, Id + 1);
+            Node!#msg{type=insert, val=V, logger=Logger, id=Id},
+            loop(Node, Logger, Id + 1);
         "l" ->
-            Node!#msg{type=lookup, val=V, client=Client, id=Id},
-            loop(Node, Client, Id + 1);
+            Node!#msg{type=lookup, val=V, logger=Logger, id=Id},
+            loop(Node, Logger, Id + 1);
         "d" ->
-            Node!#msg{type=remove, val=V, client=Client, id=Id},
-            loop(Node, Client, Id + 1)
+            Node!#msg{type=remove, val=V, logger=Logger, id=Id},
+            loop(Node, Logger, Id + 1)
     end.
