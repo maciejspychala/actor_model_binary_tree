@@ -5,7 +5,8 @@
                left=nil,
                right=nil}).
 -record(msg, {type,
-              val}).
+              val,
+              client}).
 
 nd() -> nd(#node{}).
 nd(Node) ->
@@ -17,7 +18,9 @@ nd(Node) ->
     end.
 
 insert(M, N = #node{val=nil}) ->
-    N#node{val=M#msg.val};
+    New = N#node{val=M#msg.val},
+    M#msg.client!#msg{type=inserted, val=New#node.val},
+    New;
 insert(M, N) when M#msg.val < N#node.val ->
     N#node{left=send_insert(M, N#node.left)};
 insert(M, N) when M#msg.val >= N#node.val ->
@@ -31,13 +34,21 @@ send_insert(M, N) ->
     N!M,
     N.
 
+client() ->
+    receive
+        M -> io:format("~p\n", [M]),
+             client()
+    end.
+
 loop() ->
+    C = spawn(fun() -> client() end),
     N = spawn(fun() -> nd() end),
-    loop(N).
-loop(Node) ->
+    loop(N, C).
+
+loop(Node, Client) ->
     {ok, [V]} = io:fread("new value: ","~d"),
     case V of
         0 -> ok;
-        V -> Node!#msg{type=insert, val=V},
-             loop(Node)
+        V -> Node!#msg{type=insert, val=V, client=Client},
+             loop(Node, Client)
     end.
