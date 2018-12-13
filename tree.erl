@@ -48,7 +48,19 @@ lookup(M, N) ->
         _ -> Branch!M
     end.
 
-client(Id, Q) ->
+process_messages(Id, []) -> {Id, []};
+process_messages(Id, Q) ->
+    [M|Ms] = lists:sort(fun(A, B) -> A#msg.id < B#msg.id end, Q),
+    case M of
+        #msg{id=Id} ->
+            io:format("~p\n", [M]),
+            process_messages(Id + 1, Ms);
+        _ ->
+            {Id, [M|Ms]}
+    end.
+
+client(TId, TQ) ->
+    {Id, Q} = process_messages(TId, TQ),
     receive
         M -> case M#msg.id of
                  Id ->
