@@ -39,8 +39,13 @@ send_insert(M, N) ->
 lookup(M, N) when M#msg.val == N#node.val ->
     M#msg.client!M#msg{type=found};
 lookup(M, N) ->
-    M#msg.client!to_be_implemented.
-
+    Branch = if M#msg.val < N#node.val -> N#node.left;
+                M#msg.val >= N#node.val -> N#node.right
+             end,
+    case Branch of
+        nil -> M#msg.client!M#msg{type=not_found};
+        _ -> Branch!M
+    end.
 
 client() ->
     receive
