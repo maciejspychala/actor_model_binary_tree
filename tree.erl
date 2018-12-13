@@ -45,9 +45,13 @@ loop() ->
     loop(N, C).
 
 loop(Node, Client) ->
+    {ok, [T]} = io:fread("type: ","~c"),
     {ok, [V]} = io:fread("new value: ","~d"),
-    case V of
-        0 -> ok;
-        V -> Node!#msg{type=insert, val=V, client=Client},
-             loop(Node, Client)
+    case T of
+        "i" ->
+            Node!#msg{type=insert, val=V, client=Client},
+            loop(Node, Client);
+        "l" ->
+            Node!#msg{type=lookup, val=V, client=Client},
+            loop(Node, Client)
     end.
