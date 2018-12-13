@@ -5,6 +5,15 @@
                left=nil,
                right=nil}).
 
+nd() -> nd(#node{}).
+nd(Node) ->
+    receive
+        {insert, V} ->
+            New = insert(V, Node),
+            io:format("~p\n", [New]),
+            nd(New)
+    end.
+
 insert(V, N = #node{val=nil}) ->
     N#node{val=V};
 insert(V, N) when V < N#node.val ->
@@ -19,15 +28,6 @@ send_insert(V, nil) ->
 send_insert(V, N) ->
     N!{insert,V},
     N.
-
-nd() -> nd(#node{}).
-nd(Node) ->
-    receive
-        {insert, V} ->
-            New = insert(V, Node),
-            io:format("~p\n", [New]),
-            nd(New)
-    end.
 
 loop() ->
     N = spawn(fun() -> nd() end),
