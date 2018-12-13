@@ -13,7 +13,10 @@ nd(Node) ->
     receive
         M = #msg{type=insert} ->
             New = insert(M, Node),
-            nd(New)
+            nd(New);
+        M = #msg{type=lookup} ->
+            lookup(M, Node),
+            nd(Node)
     end.
 
 insert(M, N = #node{val=nil}) ->
@@ -32,6 +35,12 @@ send_insert(M, nil) ->
 send_insert(M, N) ->
     N!M,
     N.
+
+lookup(M, N) when M#msg.val == N#node.val ->
+    M#msg.client!M#msg{type=found};
+lookup(M, N) ->
+    M#msg.client!to_be_implemented.
+
 
 client() ->
     receive
