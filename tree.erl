@@ -6,7 +6,8 @@
                right=nil}).
 -record(msg, {type,
               val,
-              client}).
+              client,
+              id}).
 
 nd() -> nd(#node{}).
 nd(Node) ->
@@ -47,25 +48,25 @@ lookup(M, N) ->
         _ -> Branch!M
     end.
 
-client() ->
+client(Id) ->
     receive
         M -> io:format("~p\n", [M]),
-             client()
+             client(Id + 1)
     end.
 
 loop() ->
-    C = spawn(fun() -> client() end),
+    C = spawn(fun() -> client(0) end),
     N = spawn(fun() -> nd() end),
-    loop(N, C).
+    loop(N, C, 0).
 
-loop(Node, Client) ->
+loop(Node, Client, Id) ->
     {ok, [T]} = io:fread("type: ","~c"),
     {ok, [V]} = io:fread("new value: ","~d"),
     case T of
         "i" ->
-            Node!#msg{type=insert, val=V, client=Client},
-            loop(Node, Client);
+            Node!#msg{type=insert, val=V, client=Client, id=Id},
+            loop(Node, Client, Id + 1);
         "l" ->
-            Node!#msg{type=lookup, val=V, client=Client},
-            loop(Node, Client)
+            Node!#msg{type=lookup, val=V, client=Client, id=Id},
+            loop(Node, Client, Id + 1)
     end.
