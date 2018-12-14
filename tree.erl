@@ -7,7 +7,8 @@
 -record(msg, {type,
               val,
               logger,
-              id}).
+              id,
+              req}).
 
 nd() -> nd(#node{}).
 nd(Node) ->
@@ -20,7 +21,9 @@ nd(Node) ->
             nd(Node);
         M = #msg{type=remove} ->
             New = remove(M, Node),
-            nd(New)
+            nd(New);
+        M = #msg{type=annihilate} ->
+            M#msg.req!#msg{type=annihilated, val=Node}
     end.
 
 log(M, Type) -> M#msg.logger!M#msg{type=Type}.
@@ -57,7 +60,21 @@ remove(M, N) when M#msg.val == N#node.val ->
     case N of
         #node{left=nil, right=nil} ->
             log(M, removed),
-            N#node{val=nil}
+            N#node{val=nil};
+        #node{left=nil} ->
+            N#node.right!#msg{type=annihilate, req=self()},
+            receive
+                #msg{type=annihilated, val=New} ->
+                    log(M, removed),
+                    New
+            end;
+        #node{right=nil} ->
+            N#node.left!#msg{type=annihilate, req=self()},
+            receive
+                #msg{type=annihilated, val=New} ->
+                    log(M, removed),
+                    New
+            end
     end;
 remove(M, N) ->
     Branch = if M#msg.val < N#node.val -> N#node.left;
