@@ -97,8 +97,10 @@ remove(M, N) when M#msg.val == N#node.val ->
     end;
 
 remove(M, N) ->
-    Branch = if M#msg.val < N#node.val -> N#node.left;
-                M#msg.val >= N#node.val -> N#node.right
+    Branch = if N#node.val == nil -> nil;
+                M#msg.val < N#node.val -> N#node.left;
+                M#msg.val >= N#node.val -> N#node.right;
+                true -> nil
              end,
     case Branch of
         nil -> log(M, not_removed);
@@ -122,7 +124,7 @@ logger(TId, TQ) ->
     receive
         M -> case M#msg.id of
                  Id ->
-                     io:format("~p\n", [M]),
+                     io:format("~p: ~p\n", [M#msg.val, M#msg.type]),
                      logger(Id + 1, Q);
                  _ ->
                      logger(Id, [M|Q])
@@ -135,8 +137,9 @@ loop() ->
     loop(N, C, 0).
 
 loop(Node, Logger, Id) ->
-    {ok, [T]} = io:fread("type: ","~c"),
-    {ok, [V]} = io:fread("value: ","~d"),
+    timer:sleep(1000),
+    T = lists:nth(rand:uniform(3), ["i", "l", "d"]),
+    V = rand:uniform(20),
     case T of
         "i" ->
             Node!#msg{type=insert, val=V, logger=Logger, id=Id},
@@ -147,7 +150,8 @@ loop(Node, Logger, Id) ->
         "d" ->
             Node!#msg{type=remove, val=V, logger=self(), id=Id},
             receive
-                M = #msg{type=removed} -> Logger!M
+                M = #msg{type=removed} -> Logger!M;
+                M = #msg{type=not_removed} -> Logger!M
             end,
             loop(Node, Logger, Id + 1)
     end.
