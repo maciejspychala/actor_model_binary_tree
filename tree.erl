@@ -23,10 +23,21 @@ nd(Node) ->
             New = remove(M, Node),
             nd(New);
         M = #msg{type=annihilate} ->
-            M#msg.req!#msg{type=annihilated, val=Node}
+            M#msg.req!#msg{type=annihilated, val=Node};
+        M = #msg{type=most_right} ->
+            New = most_right(M, Node),
+            nd(New)
     end.
 
 log(M, Type) -> M#msg.logger!M#msg{type=Type}.
+
+most_right(M, N = #node{right=nil}) ->
+    M#msg.req!#msg{type=most_right_found, val=N#node.val},
+    io:format("MOST RIGHT ~p~n", [N]),
+    remove(M#msg{logger=self(), val=N#node.val}, N);
+most_right(M, N) ->
+    N#node.right!M,
+    N.
 
 insert(M, N = #node{val=nil}) ->
     New = N#node{val=M#msg.val},
@@ -49,7 +60,8 @@ lookup(M, N) when M#msg.val == N#node.val ->
     log(M, found);
 lookup(M, N) ->
     Branch = if M#msg.val < N#node.val -> N#node.left;
-                M#msg.val >= N#node.val -> N#node.right
+                M#msg.val >= N#node.val -> N#node.right;
+                true -> nil
              end,
     case Branch of
         nil -> log(M, not_found);
@@ -74,8 +86,16 @@ remove(M, N) when M#msg.val == N#node.val ->
                 #msg{type=annihilated, val=New} ->
                     log(M, removed),
                     New
+            end;
+        _ ->
+            N#node.left!#msg{type=most_right, req=self()},
+            receive
+                #msg{type=most_right_found, val=Node} ->
+                    log(M, removed),
+                    N#node{val=Node}
             end
     end;
+
 remove(M, N) ->
     Branch = if M#msg.val < N#node.val -> N#node.left;
                 M#msg.val >= N#node.val -> N#node.right
@@ -125,6 +145,9 @@ loop(Node, Logger, Id) ->
             Node!#msg{type=lookup, val=V, logger=Logger, id=Id},
             loop(Node, Logger, Id + 1);
         "d" ->
-            Node!#msg{type=remove, val=V, logger=Logger, id=Id},
+            Node!#msg{type=remove, val=V, logger=self(), id=Id},
+            receive
+                M = #msg{type=removed} -> Logger!M
+            end,
             loop(Node, Logger, Id + 1)
     end.
