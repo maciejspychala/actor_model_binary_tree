@@ -1,5 +1,5 @@
 -module(tree).
--export([loop/0, logger/2]).
+-export([start/0]).
 
 -record(node, {val=nil,
                left=nil,
@@ -131,7 +131,7 @@ logger(TId, TQ) ->
              end
     end.
 
-loop() ->
+start() ->
     C = spawn(fun() -> logger(0, []) end),
     N = spawn(fun() -> nd() end),
     loop(N, C, 0).
