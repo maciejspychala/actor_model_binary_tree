@@ -3,8 +3,7 @@
 
 -record(node, {val=nil,
                left=nil,
-               right=nil,
-               removed=false}).
+               right=nil}).
 -record(msg, {type,
               val,
               logger,
@@ -43,7 +42,7 @@ send_insert(M, N) ->
     N!M,
     N.
 
-lookup(M, N = #node{removed=false}) when M#msg.val == N#node.val ->
+lookup(M, N) when M#msg.val == N#node.val ->
     log(M, found);
 lookup(M, N) ->
     Branch = if M#msg.val < N#node.val -> N#node.left;
@@ -54,9 +53,12 @@ lookup(M, N) ->
         _ -> Branch!M
     end.
 
-remove(M, N = #node{removed=false}) when M#msg.val == N#node.val ->
-    log(M, removed),
-    N#node{removed=true};
+remove(M, N) when M#msg.val == N#node.val ->
+    case N of
+        #node{left=nil, right=nil} ->
+            log(M, removed),
+            N#node{val=nil}
+    end;
 remove(M, N) ->
     Branch = if M#msg.val < N#node.val -> N#node.left;
                 M#msg.val >= N#node.val -> N#node.right
